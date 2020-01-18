@@ -1,5 +1,6 @@
 package org.jamilnyc.ytplayer
 
+import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import android.view.ViewGroup
@@ -15,6 +16,8 @@ const val YOUTUBE_PLAYLIST = "PLXtTjtWmQhg1SsviTmKkWO5n0a_-T0bnD"
 
 class YoutubeActivity : YouTubeBaseActivity(), YouTubePlayer.OnInitializedListener {
     private val TAG = "YoutubeActivity"
+    private val DIALOG_REQUEST_CODE = 1
+    val playerView by lazy {YouTubePlayerView(this)} // Must be lazy, since you can't instantiate this class until after the layout has been rendered
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -23,7 +26,6 @@ class YoutubeActivity : YouTubeBaseActivity(), YouTubePlayer.OnInitializedListen
         val layout = layoutInflater.inflate(R.layout.activity_youtube, null) as ConstraintLayout
         setContentView(layout)
 
-        val playerView = YouTubePlayerView(this)
         playerView.layoutParams = ConstraintLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
         layout.addView(playerView)
@@ -55,10 +57,8 @@ class YoutubeActivity : YouTubeBaseActivity(), YouTubePlayer.OnInitializedListen
         provier: YouTubePlayer.Provider?,
         youtubeInitializationResult: YouTubeInitializationResult?
     ) {
-        val REQUEST_CODE = 0
-
         if(youtubeInitializationResult?.isUserRecoverableError == true) {
-            youtubeInitializationResult?.getErrorDialog(this, REQUEST_CODE)?.show()
+            youtubeInitializationResult.getErrorDialog(this, DIALOG_REQUEST_CODE).show()
         } else {
             val errorMessage = "There was an error initializing the YouTube Player ($youtubeInitializationResult)"
             Toast.makeText(this, errorMessage, Toast.LENGTH_LONG).show()
@@ -109,5 +109,17 @@ class YoutubeActivity : YouTubeBaseActivity(), YouTubePlayer.OnInitializedListen
             Toast.makeText(this@YoutubeActivity, "Congratulations! You've completed another video.", Toast.LENGTH_SHORT).show()
         }
 
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        // The resultCode is actually 0 no matter what the user does (enabling or disabling YT in settings)
+        // So we try to reinitialize the video and so long as YT is disabled, user will be prompted to re-enable
+        Log.d(TAG, "onActivityResult called with requestCode $requestCode and resultCode $resultCode")
+
+        if (requestCode == DIALOG_REQUEST_CODE) {
+            Log.d(TAG, intent?.toString())
+            Log.d(TAG, intent?.extras.toString())
+            playerView.initialize(getString(R.string.GOOGLE_API_KEY), this)
+        }
     }
 }
